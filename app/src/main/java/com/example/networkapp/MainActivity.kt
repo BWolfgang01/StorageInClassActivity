@@ -14,6 +14,11 @@ import com.android.volley.toolbox.StringRequest
 import com.android.volley.toolbox.Volley
 import com.squareup.picasso.Picasso
 import org.json.JSONObject
+import java.io.BufferedReader
+import java.io.File
+import java.io.FileOutputStream
+import java.io.FileReader
+import java.io.IOException
 
 // TODO (1: Fix any bugs)
 // TODO (2: Add function saveComic(...) to save comic info when downloaded
@@ -27,10 +32,13 @@ class MainActivity : AppCompatActivity() {
     lateinit var numberEditText: EditText
     lateinit var showButton: Button
     lateinit var comicImageView: ImageView
+    private lateinit var file : File
+    private val fileName = "comic.json"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
 
         requestQueue = Volley.newRequestQueue(this)
 
@@ -44,14 +52,19 @@ class MainActivity : AppCompatActivity() {
             downloadComic(numberEditText.text.toString())
         }
 
+        file = File(getExternalFilesDir(null), fileName)
+        loadSavedComic()
     }
 
     // Fetches comic from web as JSONObject
     private fun downloadComic (comicId: String) {
         val url = "https://xkcd.com/$comicId/info.0.json"
-        requestQueue.add (
+        Volley.newRequestQueue(this).add (
             JsonObjectRequest(url
-                , {showComic(it)}
+                , { response ->
+                    showComic(response)
+                    saveComic(response)
+                }
                 , {}
             )
         )
@@ -64,9 +77,29 @@ class MainActivity : AppCompatActivity() {
         Picasso.get().load(comicObject.getString("img")).into(comicImageView)
     }
 
+    private fun loadSavedComic() {
+        if (file.exists()) {
+            try {
+                val jsonString = file.readText()
+                val comicObject = JSONObject(jsonString)
+                showComic(comicObject)
+            } catch (e: Exception) {
+                Toast.makeText(this, "Failed to load saved comic: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        } else {
+            Toast.makeText(this, "No saved comic found in external storage", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     // Implement this function
     private fun saveComic(comicObject: JSONObject) {
-
+        try {
+            val file = File(getExternalFilesDir(null), fileName)
+            file.writeText(comicObject.toString())
+            Toast.makeText(this, "Comic saved successfully to external storage", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Toast.makeText(this, "Failed to save comic: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
     }
 
 
